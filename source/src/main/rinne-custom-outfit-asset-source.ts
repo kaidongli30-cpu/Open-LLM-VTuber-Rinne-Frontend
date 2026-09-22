@@ -99,7 +99,7 @@ export interface RinneCustomOutfitRuntimePayload {
   bodyExtensionPng?: Uint8Array;
   manifest: CustomOutfitManifest;
   bodyPng: Uint8Array;
-  nativeHeadMaskPng: Uint8Array;
+  nativeHeadMaskPng?: Uint8Array;
 }
 
 async function readBoundedFile(
@@ -167,7 +167,9 @@ function validateManifest(manifest: CustomOutfitManifest): void {
     manifest.outfit_id.length === 0 ||
     typeof manifest.display_name !== "string" ||
     manifest.display_name.length === 0 ||
-    manifest.asset_count !== 3 ||
+    ![1, 3].includes(manifest.asset_count) ||
+    (manifest.asset_count === 1 &&
+      !sameJson(composition?.native_hidden_draw_types, NATIVE_HIDDEN_DRAW_TYPES)) ||
     donor?.outfit_number !== 1 ||
     !sameJson(donor?.portrait_id_range, [60101, 60115]) ||
     donor?.default_portrait_id !== 60102 ||
@@ -212,7 +214,7 @@ export class RinneCustomOutfitAssetSource {
     readonly displayName: string,
     private readonly manifest: CustomOutfitManifest,
     private readonly bodyPng: Buffer,
-    private readonly nativeHeadMaskPng: Buffer,
+    private readonly nativeHeadMaskPng?: Buffer,
     private readonly bodyExtensionPng?: Buffer,
   ) {}
 
@@ -242,7 +244,10 @@ export class RinneCustomOutfitAssetSource {
       );
     }
     validateManifest(manifest);
-    if (!Array.isArray(manifest.assets) || manifest.assets.length !== 3) {
+    if (
+      !Array.isArray(manifest.assets) ||
+      manifest.assets.length !== manifest.asset_count
+    ) {
       throw new Error("custom outfit asset list is invalid");
     }
 
@@ -282,7 +287,11 @@ export class RinneCustomOutfitAssetSource {
     }
     const bodyPng = verified.get("body");
     const nativeHeadMaskPng = verified.get("native_head_mask");
-    if (bodyPng === undefined || nativeHeadMaskPng === undefined) {
+    if (
+      bodyPng === undefined ||
+      (manifest.asset_count === 3 && nativeHeadMaskPng === undefined) ||
+      (manifest.asset_count === 1 && verified.size !== 1)
+    ) {
       throw new Error("custom outfit render layers are missing");
     }
     let bodyExtensionPng: Buffer | undefined;
@@ -332,7 +341,9 @@ export class RinneCustomOutfitAssetSource {
     return {
       manifest: this.manifest,
       bodyPng: Uint8Array.from(this.bodyPng),
-      nativeHeadMaskPng: Uint8Array.from(this.nativeHeadMaskPng),
+      ...(this.nativeHeadMaskPng
+        ? { nativeHeadMaskPng: Uint8Array.from(this.nativeHeadMaskPng) }
+        : {}),
       ...(this.bodyExtensionPng
         ? { bodyExtensionPng: Uint8Array.from(this.bodyExtensionPng) }
         : {}),

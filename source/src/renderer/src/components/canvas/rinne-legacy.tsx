@@ -66,7 +66,7 @@ interface CustomOutfitPayload {
   bodyExtensionPng?: Uint8Array;
   manifest: CustomOutfitManifest;
   bodyPng: Uint8Array;
-  nativeHeadMaskPng: Uint8Array;
+  nativeHeadMaskPng?: Uint8Array;
 }
 
 function checkedCustomOutfitPayload(
@@ -88,7 +88,10 @@ function checkedCustomOutfitPayload(
         (manifest?.preview_body_extension?.height ?? 0) <= 2048 ||
         (manifest?.preview_body_extension?.height ?? 0) > 2400)) ||
     !(payload.bodyPng instanceof Uint8Array) ||
-    !(payload.nativeHeadMaskPng instanceof Uint8Array) ||
+    (payload.nativeHeadMaskPng !== undefined &&
+      !(payload.nativeHeadMaskPng instanceof Uint8Array)) ||
+    (payload.nativeHeadMaskPng === undefined &&
+      manifest?.composition?.native_hidden_draw_types === undefined) ||
     manifest?.format !== CUSTOM_OUTFIT_FORMAT ||
     manifest.version !== 1 ||
     typeof manifest.display_name !== "string" ||
@@ -162,9 +165,11 @@ async function configureCustomOutfitLayers(
       type: "image/png",
     }),
   );
-  const headMaskUrl = URL.createObjectURL(
-    new Blob([payload.nativeHeadMaskPng], { type: "image/png" }),
-  );
+  const headMaskUrl = payload.nativeHeadMaskPng
+    ? URL.createObjectURL(
+        new Blob([payload.nativeHeadMaskPng], { type: "image/png" }),
+      )
+    : null;
   try {
     await loadImageElement(body, bodyUrl);
     const expectedHeight = payload.bodyExtensionPng
@@ -175,7 +180,7 @@ async function configureCustomOutfitLayers(
     }
   } catch (error) {
     URL.revokeObjectURL(bodyUrl);
-    URL.revokeObjectURL(headMaskUrl);
+    if (headMaskUrl) URL.revokeObjectURL(headMaskUrl);
     throw error;
   }
   const origin = payload.manifest.composition.body_breath.transform_origin;
@@ -213,7 +218,7 @@ async function configureCustomOutfitLayers(
       canvas.style.maskImage = "none";
       for (const target of nativeHeadCanvases) target.style.transform = "none";
       URL.revokeObjectURL(bodyUrl);
-      URL.revokeObjectURL(headMaskUrl);
+      if (headMaskUrl) URL.revokeObjectURL(headMaskUrl);
     },
   };
 }
