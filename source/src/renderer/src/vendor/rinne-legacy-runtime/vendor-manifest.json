@@ -1,0 +1,20 @@
+{
+  "format": "rinne-legacy-runtime-vendor",
+  "version": 1,
+  "sdk_commit": "cff54a2",
+  "contains_game_assets": false,
+  "files": {
+    "bundle-loader.mjs": "c6231ce0edee604ae25c083553943795164360729e79eb3b260ebaa23b322a22",
+    "desktop-runtime.mjs": "f82c8d25a9e450ea4c9262b75210942190af761210a77ce26250138fabf8b3d9",
+    "desktop-stability.mjs": "0d36ad92e880096df6479f9c78e57734b528f3fc1f5f3bd68a291b22752f389b",
+    "dynamic-bundle-loader.mjs": "e95dcdbc0b2c1e1ded09e6b9b9223f754ffa32e181d301a835046e9cfee89282",
+    "eye-dynamic-loader.mjs": "13e8ecb60b9ec86f67593eefa98f164477c83f1e6a6f8b85a9455998895c02b7",
+    "first-outfit-loader.mjs": "5611cef05fd4a3d261d7d7537f82424ab82bee24309c0daf9977879f391969d7",
+    "outfit-loader.mjs": "a22341082cf7fdbe727a58a796edbe1a8c9a8e8c572d72465171ffdb61ff1b14",
+    "runtime-control-loader.mjs": "4b91a2ce2c89073510b3d0c565d7e3f69a07d12bc66fb45f15508e1691ef9bb3",
+    "spirit-desktop-runtime.mjs": "9fc155273f099e643d186b239d2d1658d1c38fa954058edc958b224cad4547b3",
+    "spirit-expression-loader.mjs": "937fc901493ba62f69616eeb5d4f92b0d9dd75d3469a9db341adcca2d9daadd4",
+    "timeline-loader.mjs": "6ec2202d93386817207b72ca3a66fef317557f135e60369d2e2ba5674825f08b",
+    "webgl2-renderer.mjs": "16d4e04b6e1688d5f67e28c4e8d2fd28bf190484aef847050c00b90867d7cdda"
+  }
+}
