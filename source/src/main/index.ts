@@ -8,6 +8,8 @@ import {
   type BrowserWindow,
 } from "electron";
 import { electronApp, optimizer } from "@electron-toolkit/utils";
+import { mkdirSync } from "node:fs";
+import { isAbsolute, resolve } from "node:path";
 import { WindowManager } from "./window-manager";
 import { MenuManager } from "./menu-manager";
 import { registerRinneLegacyIpc } from "./rinne-legacy-loader";
@@ -20,6 +22,15 @@ let unregisterManualAudioShortcut = () => {};
 
 const MANUAL_AUDIO_ACCELERATOR = "F8";
 const MANUAL_AUDIO_RETRY_INTERVAL_MS = 5_000;
+const isolatedUserDataDir = process.env.RINNE_CLIENT_USER_DATA_DIR?.trim();
+if (isolatedUserDataDir) {
+  if (!isAbsolute(isolatedUserDataDir)) {
+    throw new Error("RINNE_CLIENT_USER_DATA_DIR must be an absolute path");
+  }
+  const userDataDir = resolve(isolatedUserDataDir);
+  mkdirSync(userDataDir, { recursive: true });
+  app.setPath("userData", userDataDir);
+}
 const singleInstanceLockAcquired = app.requestSingleInstanceLock();
 
 if (!singleInstanceLockAcquired) {

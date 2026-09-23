@@ -168,7 +168,9 @@ interface RinneLegacyRuntimeConfiguration {
 }
 
 function loadRinneLegacyUserSettings(): RinneLegacyUserSettings {
-  const configuredSettingsPath = process.env.RINNE_LEGACY_SETTINGS_PATH?.trim();
+  const configuredSettingsPath =
+    process.env.RINNE_LEGACY_SETTINGS_PATH?.trim() ||
+    process.env.RINNE_RENDERER_SETTINGS_PATH?.trim();
   const settingsPath =
     configuredSettingsPath ||
     resolve(app.getPath("userData"), USER_SETTINGS_NAME);
