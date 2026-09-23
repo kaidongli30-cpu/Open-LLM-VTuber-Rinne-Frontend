@@ -167,7 +167,7 @@ function validateManifest(manifest: CustomOutfitManifest): void {
     manifest.outfit_id.length === 0 ||
     typeof manifest.display_name !== "string" ||
     manifest.display_name.length === 0 ||
-    ![1, 3].includes(manifest.asset_count) ||
+    ![1, 2, 3].includes(manifest.asset_count) ||
     (manifest.asset_count === 1 &&
       !sameJson(composition?.native_hidden_draw_types, NATIVE_HIDDEN_DRAW_TYPES)) ||
     donor?.outfit_number !== 1 ||
@@ -289,7 +289,7 @@ export class RinneCustomOutfitAssetSource {
     const nativeHeadMaskPng = verified.get("native_head_mask");
     if (
       bodyPng === undefined ||
-      (manifest.asset_count === 3 && nativeHeadMaskPng === undefined) ||
+      (manifest.asset_count !== 1 && nativeHeadMaskPng === undefined) ||
       (manifest.asset_count === 1 && verified.size !== 1)
     ) {
       throw new Error("custom outfit render layers are missing");
