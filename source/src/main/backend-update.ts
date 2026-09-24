@@ -60,8 +60,9 @@ async function savedFolder(): Promise<string | null> {
 
 async function chooseBackendFolder(
   window: BrowserWindow,
+  chooseAgain = false,
 ): Promise<string | null> {
-  const saved = await savedFolder();
+  const saved = chooseAgain ? null : await savedFolder();
   if (saved) return saved;
   const selected = await dialog.showOpenDialog(window, {
     title: "选择凛祢后端项目文件夹",
@@ -165,20 +166,26 @@ export async function updateBackend(
   version: string,
 ): Promise<boolean> {
   try {
-    const folder = await chooseBackendFolder(window);
+    let folder = await chooseBackendFolder(window);
     if (!folder) return false;
-    const confirmation = await dialog.showMessageBox(window, {
-      type: "info",
-      title: "更新凛祢后端",
-      message: "先关闭正在运行的凛祢后端，再开始更新",
-      detail:
-        "更新会保留你的聊天记录、日记和个人配置。下载可能需要一些时间，完成后再安装新版客户端。",
-      buttons: ["取消", "开始更新"],
-      defaultId: 1,
-      cancelId: 0,
-      noLink: true,
-    });
-    if (confirmation.response !== 1) return false;
+    for (;;) {
+      const confirmation = await dialog.showMessageBox(window, {
+        type: "info",
+        title: "更新凛祢后端",
+        message: "先关闭正在运行的凛祢后端，再开始更新",
+        detail:
+          `当前后端文件夹：${folder}\n` +
+          "更新会保留聊天记录、日记和个人配置。下载可能需要一些时间。",
+        buttons: ["取消", "开始更新", "更换文件夹"],
+        defaultId: 1,
+        cancelId: 0,
+        noLink: true,
+      });
+      if (confirmation.response === 0) return false;
+      if (confirmation.response === 1) break;
+      folder = await chooseBackendFolder(window, true);
+      if (!folder) return false;
+    }
     const script = await releasedUpdater(version);
     window.setProgressBar(2);
     try {
