@@ -1,5 +1,8 @@
 import { app, dialog, shell, type BrowserWindow } from "electron";
-import { updateBackend } from "./backend-update";
+import {
+  ensureBackendForInstalledClient,
+  updateBackend,
+} from "./backend-update";
 
 const RELEASE_API =
   "https://api.github.com/repos/kaidongli30-cpu/Open-LLM-VTuber-Rinne-Frontend/releases/latest";
@@ -44,6 +47,10 @@ export function startReleaseChecks(
     if (stopped || checking) return;
     checking = true;
     try {
+      const window = getWindow();
+      if (!window || window.isDestroyed()) return;
+      if (!(await ensureBackendForInstalledClient(window, app.getVersion())))
+        return;
       const response = await fetch(RELEASE_API, {
         headers: {
           Accept: "application/vnd.github+json",
@@ -89,8 +96,7 @@ export function startReleaseChecks(
         )
       )
         return;
-      const window = getWindow();
-      if (!window || window.isDestroyed() || stopped) return;
+      if (window.isDestroyed() || stopped) return;
       notifiedTag = release.tag_name;
       const { response: choice } = await dialog.showMessageBox(window, {
         type: "info",

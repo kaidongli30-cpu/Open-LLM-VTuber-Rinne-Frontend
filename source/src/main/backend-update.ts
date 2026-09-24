@@ -1,6 +1,6 @@
 import { app, dialog, type BrowserWindow } from "electron";
 import { execFile, spawn } from "node:child_process";
-import { readFile, rename, writeFile } from "node:fs/promises";
+import { access, readFile, rename, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -13,6 +13,28 @@ const OFFICIAL_REMOTES = new Set([
 
 function locationFile(): string {
   return join(app.getPath("userData"), "rinne-backend-location.json");
+}
+
+function pairedVersionFile(): string {
+  return join(app.getPath("userData"), "rinne-paired-backend-version.json");
+}
+
+async function readPairedVersion(): Promise<string | null> {
+  try {
+    const saved = JSON.parse(await readFile(pairedVersionFile(), "utf8")) as {
+      version?: unknown;
+    };
+    return typeof saved.version === "string" ? saved.version : null;
+  } catch {
+    return null;
+  }
+}
+
+async function recordPairedVersion(version: string): Promise<void> {
+  const target = pairedVersionFile();
+  const temporary = `${target}.writing`;
+  await writeFile(temporary, JSON.stringify({ version }), "utf8");
+  await rename(temporary, target);
 }
 
 async function git(cwd: string, ...args: string[]): Promise<string> {
@@ -161,6 +183,102 @@ async function syncDependencies(folder: string): Promise<void> {
   });
 }
 
+async function runningBackendVersion(): Promise<string | null> {
+  try {
+    const response = await fetch(
+      "http://127.0.0.1:12393/api/rinne-app-version",
+      {
+        signal: AbortSignal.timeout(2_000),
+      },
+    );
+    if (!response.ok) return null;
+    const info = (await response.json()) as {
+      product?: unknown;
+      version?: unknown;
+    };
+    return info.product === "Open-LLM-VTuber-Rinne" &&
+      typeof info.version === "string"
+      ? info.version
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function folderAlreadyCurrent(
+  folder: string,
+  version: string,
+): Promise<boolean> {
+  const tag = `refs/tags/rinne-app-v${version}`;
+  const remoteTag = await git(folder, "ls-remote", "origin", tag);
+  const target = remoteTag.split(/\s+/)[0];
+  if (!/^[0-9a-f]{40}$/.test(target)) {
+    throw new Error("找不到与客户端配套的后端正式版本，请稍后重试。");
+  }
+  const head = await git(folder, "rev-parse", "HEAD");
+  if (head !== target) return false;
+  try {
+    await access(join(folder, "conf.local.yaml"));
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+export async function ensureBackendForInstalledClient(
+  window: BrowserWindow,
+  version: string,
+): Promise<boolean> {
+  const runningVersion = await runningBackendVersion();
+  if (runningVersion === version) {
+    await recordPairedVersion(version);
+    return true;
+  }
+  if (runningVersion === null && (await readPairedVersion()) === version) {
+    return true;
+  }
+  const introduction = await dialog.showMessageBox(window, {
+    type: "info",
+    title: "确认凛祢后端版本",
+    message: "请确认这个客户端连接的是配套的凛祢后端",
+    detail:
+      "从旧版升级时，选择原来运行 run_server.py 的项目文件夹；" +
+      "全新安装时，选择刚按 README 下载的项目文件夹。" +
+      "已有的聊天和日记会留在原处。",
+    buttons: ["稍后", "选择后端文件夹"],
+    defaultId: 1,
+    cancelId: 0,
+    noLink: true,
+  });
+  if (introduction.response !== 1) return false;
+  try {
+    const folder = await chooseBackendFolder(window);
+    if (!folder) return false;
+    if (await folderAlreadyCurrent(folder, version)) {
+      await recordPairedVersion(version);
+      return true;
+    }
+    if (!(await updateBackend(window, version))) return false;
+    await dialog.showMessageBox(window, {
+      type: "info",
+      title: "后端升级完成",
+      message: "凛祢后端已升级到配套版本",
+      detail: "请按原来的方式重新启动后端和桌面客户端。聊天与日记仍在原位置。",
+      buttons: ["知道了"],
+    });
+    return true;
+  } catch (error) {
+    await dialog.showMessageBox(window, {
+      type: "error",
+      title: "后端版本尚未确认",
+      message: error instanceof Error ? error.message : "后端版本检查失败。",
+      detail: "原有后端和资料没有被修改。请处理问题后重新打开客户端。",
+      buttons: ["知道了"],
+    });
+    return false;
+  }
+}
+
 export async function updateBackend(
   window: BrowserWindow,
   version: string,
@@ -191,6 +309,7 @@ export async function updateBackend(
     try {
       await runUpdater(folder, script, version);
       await syncDependencies(folder);
+      await recordPairedVersion(version);
     } finally {
       window.setProgressBar(-1);
     }
