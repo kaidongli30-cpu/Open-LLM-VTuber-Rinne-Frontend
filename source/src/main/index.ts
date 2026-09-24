@@ -13,12 +13,14 @@ import { isAbsolute, resolve } from "node:path";
 import { WindowManager } from "./window-manager";
 import { MenuManager } from "./menu-manager";
 import { registerRinneLegacyIpc } from "./rinne-legacy-loader";
+import { startReleaseChecks } from "./release-update";
 
 let windowManager: WindowManager;
 let menuManager: MenuManager;
 let isQuitting = false;
 let unregisterRinneLegacyIpc = () => {};
 let unregisterManualAudioShortcut = () => {};
+let unregisterReleaseChecks = () => {};
 
 const MANUAL_AUDIO_ACCELERATOR = "F8";
 const MANUAL_AUDIO_RETRY_INTERVAL_MS = 5_000;
@@ -271,6 +273,7 @@ function startPrimaryApplication(): void {
   setupIPC();
   unregisterRinneLegacyIpc = registerRinneLegacyIpc(window.webContents);
   unregisterManualAudioShortcut = setupManualAudioShortcut(window);
+  unregisterReleaseChecks = startReleaseChecks(() => windowManager.getWindow());
 
   app.on("activate", showExistingWindow);
 
@@ -302,6 +305,7 @@ if (singleInstanceLockAcquired) {
   app.on("before-quit", () => {
     isQuitting = true;
     unregisterManualAudioShortcut();
+    unregisterReleaseChecks();
     unregisterRinneLegacyIpc();
     menuManager.destroy();
     globalShortcut.unregisterAll();
