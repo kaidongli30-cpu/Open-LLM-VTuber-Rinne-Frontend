@@ -20,7 +20,6 @@ win:
   icon: resources/icon.ico
   target:
     - nsis
-    - zip
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
