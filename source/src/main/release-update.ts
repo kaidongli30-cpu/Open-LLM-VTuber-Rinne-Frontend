@@ -1,4 +1,5 @@
 import { app, dialog, shell, type BrowserWindow } from "electron";
+import { updateBackend } from "./backend-update";
 
 const RELEASE_API =
   "https://api.github.com/repos/kaidongli30-cpu/Open-LLM-VTuber-Rinne-Frontend/releases/latest";
@@ -96,13 +97,22 @@ export function startReleaseChecks(
         title: "凛祢有新版本",
         message: `凛祢桌面客户端 ${version} 已发布`,
         detail:
-          "可以下载新版安装包，安装时选择原来的安装位置。更新后，你的对话记录与后端配置不会因此被删除。",
-        buttons: ["稍后", "查看安装包"],
+          "点击更新后先更新后端，再打开新版客户端安装包页面。安装时可以选择原来的安装位置。",
+        buttons: ["稍后", "更新"],
         defaultId: 1,
         cancelId: 0,
         noLink: true,
       });
       if (choice === 1) {
+        if (!(await updateBackend(window, version))) return;
+        await dialog.showMessageBox(window, {
+          type: "info",
+          title: "后端已更新",
+          message: "接下来下载并安装新版凛祢客户端",
+          detail:
+            "浏览器将打开正式版本页面。下载安装包后，关闭旧客户端并运行安装包；然后按原来的方式启动后端和客户端。",
+          buttons: ["打开下载页面"],
+        });
         await shell.openExternal(
           `${RELEASE_PAGE}${encodeURIComponent(release.tag_name)}`,
         );
