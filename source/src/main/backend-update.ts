@@ -1,6 +1,13 @@
 import { app, dialog, type BrowserWindow } from "electron";
 import { execFile, spawn } from "node:child_process";
-import { access, readFile, rename, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdtemp,
+  readFile,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -119,6 +126,7 @@ async function runUpdater(
   folder: string,
   script: string,
   version: string,
+  extra: string[],
 ): Promise<string> {
   return await new Promise<string>((resolveResult, reject) => {
     const child = spawn(
@@ -128,28 +136,36 @@ async function runUpdater(
         "--no-sync",
         "python",
         "-",
-        "--apply",
         "--release",
         `rinne-app-v${version}`,
+        ...extra,
       ],
       {
         cwd: folder,
         windowsHide: true,
         shell: false,
+        env: { ...process.env, PYTHONIOENCODING: "utf-8" },
         stdio: ["pipe", "pipe", "pipe"],
       },
     );
     let stdout = "";
+    let oversized = false;
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", (chunk: string) => {
-      stdout = (stdout + chunk).slice(-4096);
+      if (oversized) return;
+      stdout += chunk;
+      if (stdout.length > 4_000_000) {
+        oversized = true;
+        child.kill();
+      }
     });
     child.stderr.resume();
     child.on("error", () =>
       reject(new Error("无法启动 uv。请确认已按 README 安装 uv。")),
     );
     child.on("close", (code) => {
-      if (code === 0) resolveResult(stdout.trim());
+      if (oversized) reject(new Error("更新检查结果过大，未继续更新。"));
+      else if (code === 0) resolveResult(stdout.trim());
       else
         reject(
           new Error(stdout.trim() || "后端更新未完成，请检查网络和项目文件。"),
@@ -158,6 +174,104 @@ async function runUpdater(
     child.stdin.on("error", () => {});
     child.stdin.end(script);
   });
+}
+
+type UpdateConflict = {
+  id: string;
+  file: string;
+  section: string;
+  mine: string;
+  new: string;
+};
+
+type UpdatePlan = {
+  message: string;
+  snapshot: string;
+  target: string;
+  conflicts: UpdateConflict[];
+};
+
+function parseUpdatePlan(raw: string): UpdatePlan {
+  const plan = JSON.parse(raw) as UpdatePlan;
+  if (
+    !plan ||
+    !Array.isArray(plan.conflicts) ||
+    typeof plan.snapshot !== "string" ||
+    typeof plan.target !== "string" ||
+    !/^[a-f0-9]{64}$/.test(plan.snapshot) ||
+    !/^[a-f0-9]{40}$/.test(plan.target) ||
+    typeof plan.message !== "string" ||
+    plan.conflicts.some(
+      (item) =>
+        !item ||
+        !/^[a-f0-9]{64}$/.test(item.id) ||
+        [item.file, item.section, item.mine, item.new].some(
+          (value) => typeof value !== "string",
+        ),
+    )
+  ) {
+    throw new Error("更新检查结果无效，未继续修改文件。");
+  }
+  if (
+    new Set(plan.conflicts.map((item) => item.id)).size !==
+    plan.conflicts.length
+  ) {
+    throw new Error("更新选择编号重复，未继续修改文件。");
+  }
+  return plan;
+}
+
+async function reviewUpdate(
+  window: BrowserWindow,
+  plan: UpdatePlan,
+): Promise<Record<string, "mine" | "new"> | null> {
+  const choices: Record<string, "mine" | "new"> = {};
+  for (const [index, item] of plan.conflicts.entries()) {
+    if (window.isDestroyed()) return null;
+    const { response } = await dialog.showMessageBox(window, {
+      type: "question",
+      title:
+        "选择保留的内容（" + (index + 1) + "/" + plan.conflicts.length + "）",
+      message: item.file + "\n" + item.section,
+      detail:
+        "你的内容：\n" +
+        item.mine +
+        "\n\n新版内容：\n" +
+        item.new +
+        "\n\n" +
+        "仅选择这一处，其余可合并的改动仍会更新。保留旧代码可能与新版不兼容。" +
+        "取消会放弃本次全部选择，此时尚未修改项目文件。",
+      buttons: ["取消本次更新", "保留我的", "采用新版"],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    if (response === 0) return null;
+    choices[item.id] = response === 1 ? "mine" : "new";
+  }
+  if (plan.conflicts.length) {
+    const mine = Object.values(choices).filter(
+      (value) => value === "mine",
+    ).length;
+    const { response } = await dialog.showMessageBox(window, {
+      type: "question",
+      title: "确认更新选择",
+      message: "所有冲突已选择，是否备份并开始更新？",
+      detail:
+        "保留你的内容：" +
+        mine +
+        " 处；采用新版：" +
+        (plan.conflicts.length - mine) +
+        " 处。\n" +
+        "密钥、语音目录和原有记忆会保留。更新文件会先备份；程序会再次检查文件是否变化。",
+      buttons: ["取消本次更新", "备份并更新"],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    if (response !== 1) return null;
+  }
+  return choices;
 }
 
 async function syncDependencies(folder: string): Promise<void> {
@@ -307,7 +421,31 @@ export async function updateBackend(
     const script = await releasedUpdater(version);
     window.setProgressBar(2);
     try {
-      await runUpdater(folder, script, version);
+      const plan = parseUpdatePlan(
+        await runUpdater(folder, script, version, ["--plan-json"]),
+      );
+      window.setProgressBar(-1);
+      const choices = await reviewUpdate(window, plan);
+      if (choices === null || window.isDestroyed()) return false;
+      const temporary = await mkdtemp(
+        join(app.getPath("userData"), "rinne-update-choices-"),
+      );
+      try {
+        const decisions = join(temporary, "choices.json");
+        await writeFile(
+          decisions,
+          JSON.stringify({ snapshot: plan.snapshot, choices }),
+          "utf8",
+        );
+        window.setProgressBar(2);
+        await runUpdater(folder, script, version, [
+          "--apply",
+          "--choices-file",
+          decisions,
+        ]);
+      } finally {
+        await rm(temporary, { recursive: true, force: true });
+      }
       await syncDependencies(folder);
       await recordPairedVersion(version);
     } finally {
