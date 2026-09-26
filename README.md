@@ -1,16 +1,25 @@
-# Open-LLM-VTuber-Rinne Frontend Build
+# Open-LLM-VTuber-Rinne 桌面客户端
 
-这里存放 [Open-LLM-VTuber-Rinne](https://github.com/kaidongli30-cpu/Open-LLM-VTuber-Rinne) 运行所需的网页端编译文件，不包含前端源代码。
+这是凛祢的桌面客户端仓库。正常使用不需要自己编译，下载安装程序即可。
 
-本构建基于 [Open-LLM-VTuber-Web](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber-Web)，并包含 Rinne 桌宠使用中验证过的交互修复：
+## 安装和启动
 
-- 麦克风启动、停止与初始化状态恢复；
-- 麦克风、打断和发送按钮点击；
-- 拖拽结束、取消和窗口失焦后的状态清理；
-- Live2D 最终表情保持与无语音片段的表情应用。
+1. 先按[主项目安装指南](https://github.com/kaidongli30-cpu/Open-LLM-VTuber-Rinne/blob/main/README.md)配置语音服务和后端。
+2. 打开 [Windows 客户端下载页](https://github.com/kaidongli30-cpu/Open-LLM-VTuber-Rinne-Frontend/releases/tag/rinne-desktop-v2.0.0-20260925)。
+3. 下载 `open-llm-vtuber-2.0.0-setup.exe`，双击安装。可以选择安装到其他磁盘。
+4. 先启动 Ollama、语音服务和后端，再双击桌面客户端快捷方式。
 
-桌面 Pet mode 的透明区域鼠标穿透修复位于 Electron 主进程中，因此请同时使用主仓库 GitHub Releases 提供的 Rinne 桌面客户端安装包。
+客户端只是操作界面。要收到凛祢的回复，后端和语音服务也需要运行。
 
-构建来源：Rinne 前端修复提交 `bbd0ffee11a6f2ac8c8cff6a4b919c160480e4dd`。
+## 从旧版更新
 
-许可证见 [LICENSE](LICENSE)。
+请按[旧版升级说明](https://github.com/kaidongli30-cpu/Open-LLM-VTuber-Rinne/blob/main/README.md#upgrade)操作，同时更新后端和客户端。
+
+1.2.1 用户需要先手动安装新版客户端，再用新版客户端更新原有后端。不要删除旧项目和聊天记录。
+
+## 想修改客户端代码
+
+- `source`：桌面客户端源码，开发方法见 [source/README.md](source/README.md)。
+- 根目录的 `index.html` 等文件：供后端使用的前端构建文件。
+
+本项目基于 [Open-LLM-VTuber-Web](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber-Web)。许可证见 [LICENSE](LICENSE)。
