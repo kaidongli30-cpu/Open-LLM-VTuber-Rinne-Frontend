@@ -2,7 +2,7 @@
 
 这里只供需要修改客户端代码的人使用。
 
-如果只是安装凛祢，请直接下载[桌面安装包](https://github.com/kaidongli30-cpu/Open-LLM-VTuber-Rinne-Frontend/releases/tag/rinne-desktop-v2.0.0-20260925)，不用执行下面的命令。
+如果只是安装凛祢，请直接下载[桌面安装包](https://github.com/kaidongli30-cpu/Open-LLM-VTuber-Rinne-Frontend/releases/tag/rinne-desktop-v2.1.0-20260926)，不用执行下面的命令。
 
 客户端使用 Electron、React 和 TypeScript。Electron 把界面打包成桌面程序，React 负责界面，TypeScript 用来编写代码。
 
@@ -37,7 +37,7 @@ npm run dev
 npm run build:win
 ```
 
-构建产物保存在 `source\release\<版本号>`，相对于前端仓库根目录。当前版本的安装程序是 `open-llm-vtuber-2.0.0-setup.exe`。
+构建产物保存在 `source\release\<版本号>`，相对于前端仓库根目录。当前版本的安装程序是 `open-llm-vtuber-2.1.0-setup.exe`。
 
 ## 其他构建命令
 
