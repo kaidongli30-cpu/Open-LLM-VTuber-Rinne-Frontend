@@ -1,4 +1,4 @@
-import { app, dialog, shell, type BrowserWindow } from "electron";
+import { app, dialog, net, shell, type BrowserWindow } from "electron";
 import {
   ensureBackendForInstalledClient,
   updateBackend,
@@ -51,7 +51,8 @@ export function startReleaseChecks(
       if (!window || window.isDestroyed()) return;
       if (!(await ensureBackendForInstalledClient(window, app.getVersion())))
         return;
-      const response = await fetch(RELEASE_API, {
+      // net.fetch uses the Windows system proxy; Node's fetch ignores it.
+      const response = await net.fetch(RELEASE_API, {
         headers: {
           Accept: "application/vnd.github+json",
           "User-Agent": "Rinne-Desktop",
@@ -77,7 +78,7 @@ export function startReleaseChecks(
       const installerName = `open-llm-vtuber-${version}-setup.exe`;
       if (!release.assets?.some((asset) => asset.name === installerName))
         return;
-      const backendResponse = await fetch(BACKEND_RELEASES_API, {
+      const backendResponse = await net.fetch(BACKEND_RELEASES_API, {
         headers: {
           Accept: "application/vnd.github+json",
           "User-Agent": "Rinne-Desktop",

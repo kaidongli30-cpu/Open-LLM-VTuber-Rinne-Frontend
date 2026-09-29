@@ -1,4 +1,4 @@
-import { app, dialog, type BrowserWindow } from "electron";
+import { app, dialog, net, type BrowserWindow } from "electron";
 import { execFile, spawn } from "node:child_process";
 import {
   access,
@@ -107,16 +107,63 @@ async function chooseBackendFolder(
   return folder;
 }
 
-async function releasedUpdater(version: string): Promise<string> {
+function isUpdater(script: string | null): script is string {
+  return (
+    script !== null &&
+    script.length <= 200_000 &&
+    script.includes("def run_update(")
+  );
+}
+
+async function releasedUpdater(
+  folder: string,
+  version: string,
+): Promise<string> {
   const tag = `rinne-app-v${version}`;
-  const url =
-    `https://raw.githubusercontent.com/kaidongli30-cpu/` +
-    `Open-LLM-VTuber-Rinne/${tag}/tools/rinne_safe_update.py`;
-  const response = await fetch(url, { signal: AbortSignal.timeout(20_000) });
-  if (!response.ok)
-    throw new Error("无法取得配套的正式后端更新程序，请稍后重试。");
-  const script = await response.text();
-  if (script.length > 200_000 || !script.includes("def run_update(")) {
+  const path = "tools/rinne_safe_update.py";
+  let script: string | null = null;
+  try {
+    // net.fetch uses the Windows system proxy; Node's fetch ignores it.
+    const response = await net.fetch(
+      `https://raw.githubusercontent.com/kaidongli30-cpu/` +
+        `Open-LLM-VTuber-Rinne/${tag}/${path}`,
+      { signal: AbortSignal.timeout(20_000) },
+    );
+    if (response.ok) script = await response.text();
+  } catch {
+    script = null;
+  }
+  if (isUpdater(script)) return script;
+  // raw.githubusercontent.com is often unreachable in mainland China while
+  // Git still works, including through a proxy configured for Git only.
+  try {
+    await execFileAsync(
+      "git",
+      [
+        "fetch",
+        "--quiet",
+        "--no-recurse-submodules",
+        "--no-tags",
+        "origin",
+        `+refs/tags/${tag}:refs/tags/${tag}`,
+      ],
+      {
+        cwd: folder,
+        windowsHide: true,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+      },
+    );
+    ({ stdout: script } = await execFileAsync(
+      "git",
+      ["show", `refs/tags/${tag}:${path}`],
+      { cwd: folder, windowsHide: true, encoding: "utf8", maxBuffer: 1 << 20 },
+    ));
+  } catch {
+    throw new Error(
+      "无法取得配套的正式后端更新程序。请检查网络；GitHub 连接不稳定时，可按 README 为 Git 设置代理后重试。",
+    );
+  }
+  if (!isUpdater(script)) {
     throw new Error("正式后端更新程序内容异常，更新已停止。");
   }
   return script;
@@ -418,9 +465,9 @@ export async function updateBackend(
       folder = await chooseBackendFolder(window, true);
       if (!folder) return false;
     }
-    const script = await releasedUpdater(version);
     window.setProgressBar(2);
     try {
+      const script = await releasedUpdater(folder, version);
       const plan = parseUpdatePlan(
         await runUpdater(folder, script, version, ["--plan-json"]),
       );
