@@ -2,6 +2,15 @@
 
 这是凛祢的桌面客户端仓库。正常使用不需要自己编译，下载安装程序即可。
 
+## 最近更新
+
+| 版本 | 发布日期 | 主要变化 |
+| --- | --- | --- |
+| [2.1.2](CHANGELOG.md#212---2026-10-20) | 2026-10-20 | 修正“关于”页版本显示；配套后端改进记忆、资料查找和对话处理。 |
+| [2.1.1](CHANGELOG.md#211---2026-09-30) | 2026-09-30 | 改善代理网络下的更新下载；配套后端修复旧版升级并改进记忆。 |
+
+[查看客户端更新日志](CHANGELOG.md) · [查看完整功能更新](https://github.com/kaidongli30-cpu/Open-LLM-VTuber-Rinne/blob/main/CHANGELOG.md) · [下载最新客户端](https://github.com/kaidongli30-cpu/Open-LLM-VTuber-Rinne-Frontend/releases/latest)
+
 ## 安装和启动
 
 1. 先按[主项目安装指南](https://github.com/kaidongli30-cpu/Open-LLM-VTuber-Rinne/blob/main/README.md)配置语音服务和后端。
