@@ -5,8 +5,8 @@
 ## 安装和启动
 
 1. 先按[主项目安装指南](https://github.com/kaidongli30-cpu/Open-LLM-VTuber-Rinne/blob/main/README.md)配置语音服务和后端。
-2. 打开 [Windows 客户端下载页](https://github.com/kaidongli30-cpu/Open-LLM-VTuber-Rinne-Frontend/releases/tag/rinne-desktop-v2.1.1-20260929)。
-3. 下载 `open-llm-vtuber-2.1.1-setup.exe`，双击安装。可以选择安装到其他磁盘。
+2. 打开 [Windows 客户端下载页](https://github.com/kaidongli30-cpu/Open-LLM-VTuber-Rinne-Frontend/releases/tag/rinne-desktop-v2.1.2-20261020)。
+3. 下载 `open-llm-vtuber-2.1.2-setup.exe`，双击安装。可以选择安装到其他磁盘。
 4. 先启动 Ollama、语音服务和后端，再双击桌面客户端快捷方式。
 
 客户端只是操作界面。要收到凛祢的回复，后端和语音服务也需要运行。
